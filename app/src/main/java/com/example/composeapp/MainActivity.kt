@@ -107,7 +107,7 @@ fun HomeScreen(
 
         val dateText = viewModel.dateText.collectAsState()
         if (isAndroid.value) {
-            Greeting(name = "Android")
+            Greeting(name = "あんどろい")
         } else {
             Greeting(name = "iPhone")
         }
