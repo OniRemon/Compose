@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.kittinunf.fuel.Fuel
 import com.github.kittinunf.fuel.coroutines.awaitStringResponseResult
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,8 +15,12 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import java.util.*
+import javax.inject.Inject
 
-class MainViewModel : ViewModel() {
+@HiltViewModel
+class MainViewModel @Inject constructor(
+    private val loginDao: LoginDao
+) : ViewModel() {
     private val _isAndroid = MutableStateFlow(true)
     val isAndroid : StateFlow<Boolean> = _isAndroid
 
@@ -37,6 +42,9 @@ class MainViewModel : ViewModel() {
     private val _repos = MutableStateFlow(listOf<GHRepos>())
     val repos : StateFlow<List<GHRepos>> = _repos
 
+    private val _names = MutableStateFlow(listOf<LoginEntity>())
+    val names : StateFlow<List<LoginEntity>> = _names
+
     init {
         viewModelScope.launch {
             kotlin.runCatching {
@@ -46,6 +54,14 @@ class MainViewModel : ViewModel() {
                 }
             }.onFailure {
                 Log.w(TAG,it)
+            }
+        }
+        viewModelScope.launch {
+            kotlin.runCatching {
+                loginDao.loadAll().collect {
+                    Log.d(TAG, "loadAll ${it.size}")
+                    _names.value = it
+                }
             }
         }
 
@@ -102,6 +118,9 @@ class MainViewModel : ViewModel() {
                 val text = result.get()
                 val user = json.decodeFromString<GHUsers>(text)
                 val (_, _, reposResult ) = Fuel.get(user.reposUrl).awaitStringResponseResult()
+                val entity = _names.value.firstOrNull { it.login == _login.value }
+                    ?: LoginEntity(0, _login.value, 0)
+                loginDao.insert(entity.copy(updateAt = Date().time))
                 val reposText = reposResult.get()
                 json.decodeFromString<List<GHRepos>>(reposText)
             }.onSuccess {

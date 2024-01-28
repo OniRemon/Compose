@@ -24,8 +24,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.composeapp.ui.theme.ComposeAppTheme
+import dagger.hilt.android.AndroidEntryPoint
 
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -156,13 +158,18 @@ fun CommScreen(
             }
         }
         Divider()
-        val names = listOf("microsoft", "apple", "google")
+        val names = viewModel.names.collectAsState()
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)){
-            items(names) {
-                Row(modifier = Modifier
-                    .clickable { viewModel.onSelect(it) }
-                    .fillMaxWidth()) {
-                    Text(text = it)
+            items(names.value) {
+                Row(
+                    modifier = Modifier
+                        .clickable { viewModel.onSelect(it.login) }
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                    Text(text = it.login)
+                    Text(text = it.id.toString())
+                    Text(text = it.updateAt.toString())
                 }
             }
         }
