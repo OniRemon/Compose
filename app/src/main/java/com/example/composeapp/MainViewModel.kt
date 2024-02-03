@@ -3,6 +3,7 @@ package com.example.composeapp
 import android.icu.text.SimpleDateFormat
 import android.text.format.DateFormat
 import android.util.Log
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.kittinunf.fuel.Fuel
@@ -19,10 +20,15 @@ import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
+    private val savedStateHandle: SavedStateHandle,
     private val loginDao: LoginDao
 ) : ViewModel() {
-    private val _isAndroid = MutableStateFlow(true)
-    val isAndroid : StateFlow<Boolean> = _isAndroid
+    enum class StateKey{
+        IS_ANDROID,
+        LOGIN,
+        DRAFT_LOGIN
+    }
+    val isAndroid : StateFlow<Boolean> = savedStateHandle.getStateFlow(StateKey.IS_ANDROID.name, true)
 
     private val _inProgress = MutableStateFlow(false)
     val inProgress : StateFlow<Boolean> = _inProgress
@@ -33,11 +39,9 @@ class MainViewModel @Inject constructor(
     private val _message = MutableStateFlow("")
     val message : StateFlow<String> = _message
 
-    private val _login = MutableStateFlow("")
-    val login : StateFlow<String> = _login
+    val login : StateFlow<String> = savedStateHandle.getStateFlow(StateKey.LOGIN.name, "")
 
-    private val _draftLogin = MutableStateFlow("")
-    val draftLogin : StateFlow<String> = _draftLogin
+    val draftLogin : StateFlow<String> = savedStateHandle.getStateFlow(StateKey.DRAFT_LOGIN.name, "")
 
     private val _repos = MutableStateFlow(listOf<GHRepos>())
     val repos : StateFlow<List<GHRepos>> = _repos
@@ -77,7 +81,7 @@ class MainViewModel @Inject constructor(
 
     fun onClick() {
         Log.d(TAG,"MainViewModel onClick")
-        _isAndroid.value = !_isAndroid.value
+        savedStateHandle[StateKey.IS_ANDROID.name] = !isAndroid.value
     }
     fun onDismiss() {
         Log.d(TAG,"MainViewModel onDismiss")
@@ -85,12 +89,12 @@ class MainViewModel @Inject constructor(
     }
     fun onSelect(name: String) {
         Log.d(TAG,"MainViewModel onSelect $name")
-        _login.value = name
+        savedStateHandle[StateKey.LOGIN.name] = name
     }
 
     fun onUpdateDraftLogin(name: String) {
         Log.d(TAG,"MainViewModel onUpdateDraftLogin $name")
-        _draftLogin.value = name
+        savedStateHandle[StateKey.DRAFT_LOGIN.name] = name
     }
 
     private val json by lazy {
@@ -110,7 +114,7 @@ class MainViewModel @Inject constructor(
         }
         viewModelScope.launch {
             kotlin.runCatching {
-                val (request, response, result) = Fuel.get("https://api.github.com/users/${_login.value}")
+                val (request, response, result) = Fuel.get("https://api.github.com/users/${login.value}")
                     .awaitStringResponseResult()
                 Log.d(TAG,"request=$request")
                 Log.d(TAG,"response=$response")
@@ -118,8 +122,8 @@ class MainViewModel @Inject constructor(
                 val text = result.get()
                 val user = json.decodeFromString<GHUsers>(text)
                 val (_, _, reposResult ) = Fuel.get(user.reposUrl).awaitStringResponseResult()
-                val entity = _names.value.firstOrNull { it.login == _login.value }
-                    ?: LoginEntity(0, _login.value, 0)
+                val entity = _names.value.firstOrNull { it.login == login.value }
+                    ?: LoginEntity(0, login.value, 0)
                 loginDao.insert(entity.copy(updateAt = Date().time))
                 val reposText = reposResult.get()
                 json.decodeFromString<List<GHRepos>>(reposText)
