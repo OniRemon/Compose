@@ -25,6 +25,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.composeapp.ui.theme.ComposeAppTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlin.math.log
 
 
 @AndroidEntryPoint
@@ -81,47 +82,82 @@ const val TAG = "タグ"
 @Composable
 fun MainScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.compose.viewModel()){
     val navController = rememberNavController()
+
     NavHost(navController = navController, startDestination = Route.HOME.name ) {
         composable(Route.HOME.name) {
-            HomeScreen(viewModel,navController)
+            val isAndroid = viewModel.isAndroid.collectAsState()
+            val dateText = viewModel.dateText.collectAsState()
+            HomeScreen(
+                isAndroid = isAndroid.value,
+                dateText = dateText.value,
+                onClick = { viewModel.onClick()},
+                onNavigate = { navController.navigate(Route.COMM.name)}
+            )
         }
         composable(Route.COMM.name) {
-            CommScreen(viewModel,navController)
+            val login = viewModel.login.collectAsState()
+            val names = viewModel.names.collectAsState()
+            CommScreen(
+                login = login.value,
+                names = names.value,
+                onUpdateDraftLogin = {viewModel.onUpdateDraftLogin(login.value)},
+                onGet = {viewModel.onGet()},
+                onSelect = {viewModel.onSelect(it)},
+                onNavigateToInput = {navController.navigate(Route.INPUT.name)},
+                onNavigateToRepos = {navController.navigate(Route.REPOS.name)}
+            )
         }
         composable(Route.INPUT.name) {
-            InputScreen(viewModel,navController)
+            val draftLogin = viewModel.draftLogin.collectAsState()
+            InputScreen(
+                draftLogin = draftLogin.value,
+                onSelect = { viewModel.onSelect(draftLogin.value) },
+                onUpdateDraftLogin = {viewModel.onUpdateDraftLogin(it)},
+                onPopBackStack = {navController.popBackStack()}
+            )
         }
         composable(Route.REPOS.name) {
-            ReposScreen(viewModel)
+            val login = viewModel.login.collectAsState()
+            val repos = viewModel.repos.collectAsState()
+            val inProgress = viewModel.inProgress.collectAsState()
+            val message = viewModel.message.collectAsState()
+            ReposScreen(
+                login = login.value,
+                repos = repos.value,
+                inProgress = inProgress.value,
+                message = message.value,
+                onDismiss = {viewModel.onDismiss()}
+            )
         }
     }
 }
 
 @Composable
 fun HomeScreen(
-    viewModel: MainViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
-    navController: NavController = rememberNavController()
+    isAndroid: Boolean,
+    dateText: String,
+    onClick: () -> Unit,
+    onNavigate: () -> Unit,
 ) {
     Column(modifier = Modifier
         .padding(16.dp)
         .fillMaxWidth()) {
-        val isAndroid = viewModel.isAndroid.collectAsState()
 
-        val dateText = viewModel.dateText.collectAsState()
-        if (isAndroid.value) {
+        if (isAndroid) {
             Greeting(name = "Android")
         } else {
             Greeting(name = "iPhone")
         }
-        Button(onClick = {
-            viewModel.onClick()
-        }) {
+        Button(
+            onClick =  onClick
+        ) {
             Text(text = "Push me!!")
         }
-        Text(text = dateText.value)
+        Text(text = dateText)
         
-        Button(onClick = { navController.navigate(Route.COMM.name)
-        }) {
+        Button(
+            onClick =  onNavigate
+        ) {
             Text(text = "Navigate CommScreen")
         }
     }
@@ -129,41 +165,46 @@ fun HomeScreen(
 
 @Composable
 fun CommScreen(
-    viewModel: MainViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
-    navController: NavController = rememberNavController()
+    login: String,
+    names: List<LoginEntity>,
+    onUpdateDraftLogin: () -> Unit,
+    onGet: () -> Unit,
+    onSelect: (String) -> Unit,
+    onNavigateToInput: () -> Unit,
+    onNavigateToRepos: () -> Unit,
 ) {
     Column(modifier = Modifier
         .padding(16.dp)
         .fillMaxWidth()) {
         Greeting(name = "CommScreen")
-        val login = viewModel.login.collectAsState()
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable {
-                    viewModel.onUpdateDraftLogin(login.value)
-                    navController.navigate(Route.INPUT.name)
+                    onUpdateDraftLogin()
+                    onNavigateToInput()
                 },
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = login.value)
+            Text(text = login)
             Button(
                 onClick = {
-                    viewModel.onGet()
-                    navController.navigate(Route.REPOS.name)
+                    onGet()
+                    onNavigateToRepos()
                 }
             ) {
                 Text(text = "onGet!!")
             }
         }
         Divider()
-        val names = viewModel.names.collectAsState()
+
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)){
-            items(names.value) {
+            items(names) {
                 Row(
                     modifier = Modifier
-                        .clickable { viewModel.onSelect(it.login) }
+                        .clickable { onSelect(it.login) }
                         .fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
@@ -178,25 +219,27 @@ fun CommScreen(
 
 @Composable
 fun InputScreen(
-    viewModel: MainViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
-    navController: NavController = rememberNavController()
+    draftLogin: String,
+    onSelect: () -> Unit,
+    onUpdateDraftLogin: (String) -> Unit,
+    onPopBackStack: () -> Unit
 ) {
-    val draftLogin = viewModel.draftLogin.collectAsState()
+
     Column(modifier = Modifier
         .fillMaxWidth()
         .padding(16.dp)) {
         TextField(
-            value = draftLogin.value,
+            value = draftLogin,
             onValueChange = {
                 if (it.length < 20) {
-                    viewModel.onUpdateDraftLogin(it)
+                    onUpdateDraftLogin(it)
                 }
             },
             label = { Text(text = "user") },
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = {
-                viewModel.onSelect(draftLogin.value)
-                navController.popBackStack()
+                onSelect()
+                onPopBackStack()
             } ),
             singleLine = true
         )
@@ -204,18 +247,22 @@ fun InputScreen(
 }
 
 @Composable
-fun ReposScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.compose.viewModel()){
+fun ReposScreen(
+    login: String,
+    repos: List<GHRepos>,
+    inProgress: Boolean,
+    message: String,
+    onDismiss: () -> Unit,
+){
     Column(modifier = Modifier
         .fillMaxWidth()) {
-        val login = viewModel.login.collectAsState()
-        val repos = viewModel.repos.collectAsState()
         Text(
-            text = "user = ${login.value} size = ${repos.value.size}",
+            text = "user = $login size = ${repos.size}",
             modifier = Modifier.padding(horizontal = 16.dp)
         )
         Divider()
         LazyColumn{
-            items(repos.value) {
+            items(repos) {
                 Column(modifier = Modifier.padding(vertical = 8.dp)) {
                     Text(text = it.name, fontSize = 16.sp, modifier = Modifier.padding(horizontal = 16.dp))
                     Text(text = it.updatedAt, fontSize = 8.sp, modifier = Modifier.padding(horizontal = 16.dp))
@@ -223,19 +270,17 @@ fun ReposScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.compose.
             }
         }
     }
-    val inProgress = viewModel.inProgress.collectAsState()
-    if (inProgress.value) {
+    if (inProgress) {
         Box(modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
     }
-    val message = viewModel.message.collectAsState()
-    if (message.value.isNotEmpty()) {
+    if (message.isNotEmpty()) {
         AlertDialog(
-            onDismissRequest = { viewModel.onDismiss() },
+            onDismissRequest = { onDismiss() },
             buttons = {},
-            text = { Text(text = message.value) })
+            text = { Text(text = message) })
     }
 }
 @Composable
@@ -247,7 +292,7 @@ fun Greeting(name: String) {
 @Composable
 fun MainPreview() {
     ComposeAppTheme {
-       HomeScreen()
+       HomeScreen(isAndroid = true, dateText = "2024/2/4", onClick = {}, onNavigate = {})
     }
 }
 
@@ -255,14 +300,27 @@ fun MainPreview() {
 @Composable
 fun CommPreview() {
     ComposeAppTheme {
-        CommScreen()
+        CommScreen(
+            login = "a",
+            names = emptyList(),
+            onUpdateDraftLogin = {},
+            onGet = {},
+            onSelect = {},
+            onNavigateToRepos = {},
+            onNavigateToInput = {}
+        )
     }
 }
 @Preview(showBackground = true)
 @Composable
 fun InputPreview() {
     ComposeAppTheme {
-        InputScreen()
+        InputScreen(
+            draftLogin = "test",
+            onSelect = {},
+            onUpdateDraftLogin = {},
+            onPopBackStack = {}
+        )
     }
 }
 
@@ -270,6 +328,12 @@ fun InputPreview() {
 @Composable
 fun ReposPreview() {
     ComposeAppTheme {
-        ReposScreen()
+        ReposScreen(
+            login = "login",
+            repos = emptyList(),
+            inProgress = true,
+            message = "message",
+            onDismiss = {}
+        )
     }
 }
