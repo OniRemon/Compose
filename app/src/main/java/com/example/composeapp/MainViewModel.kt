@@ -72,6 +72,7 @@ class MainViewModel @Inject constructor(
             kotlin.runCatching {
                 if (login.value.isNotBlank()) {
                     onGet()
+                    Log.d("test","test")
                 }
             }
         }
