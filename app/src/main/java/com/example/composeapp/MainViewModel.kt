@@ -68,7 +68,13 @@ class MainViewModel @Inject constructor(
                 }
             }
         }
-
+        viewModelScope.launch {
+            kotlin.runCatching {
+                if (login.value.isNotBlank()) {
+                    onGet()
+                }
+            }
+        }
     }
 
     private fun getDataText() :String {
