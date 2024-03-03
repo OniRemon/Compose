@@ -34,8 +34,7 @@ class MainActivity : ComponentActivity() {
             ComposeAppTheme {
                 // A surface container using the 'background' color from the theme
                 Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
                 ) {
                     MainScreen()
                 }
@@ -71,61 +70,56 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class Route {
-    HOME,
-    COMM,
-    REPOS,
-    INPUT,
+    HOME, COMM, REPOS, INPUT, DIALOG_TEST
 }
+
 const val TAG = "タグ"
+
 @Composable
-fun MainScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.compose.viewModel()){
+fun MainScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.compose.viewModel()) {
     val navController = rememberNavController()
 
-    NavHost(navController = navController, startDestination = Route.HOME.name ) {
+    NavHost(navController = navController, startDestination = Route.HOME.name) {
         composable(Route.HOME.name) {
             val isAndroid = viewModel.isAndroid.collectAsState()
             val dateText = viewModel.dateText.collectAsState()
-            HomeScreen(
-                isAndroid = isAndroid.value,
+            HomeScreen(isAndroid = isAndroid.value,
                 dateText = dateText.value,
-                onClick = { viewModel.onClick()},
-                onNavigate = { navController.navigate(Route.COMM.name)}
-            )
+                onClick = { viewModel.onClick() },
+                onNavigate = { navController.navigate(Route.COMM.name) },
+                onDialogTest = { navController.navigate(Route.DIALOG_TEST.name) })
         }
         composable(Route.COMM.name) {
             val login = viewModel.login.collectAsState()
             val names = viewModel.names.collectAsState()
-            CommScreen(
-                login = login.value,
+            CommScreen(login = login.value,
                 names = names.value,
-                onUpdateDraftLogin = {viewModel.onUpdateDraftLogin(login.value)},
-                onGet = {viewModel.onGet()},
-                onSelect = {viewModel.onSelect(it)},
-                onNavigateToInput = {navController.navigate(Route.INPUT.name)},
-                onNavigateToRepos = {navController.navigate(Route.REPOS.name)}
-            )
+                onUpdateDraftLogin = { viewModel.onUpdateDraftLogin(login.value) },
+                onGet = { viewModel.onGet() },
+                onSelect = { viewModel.onSelect(it) },
+                onNavigateToInput = { navController.navigate(Route.INPUT.name) },
+                onNavigateToRepos = { navController.navigate(Route.REPOS.name) })
         }
         composable(Route.INPUT.name) {
             val draftLogin = viewModel.draftLogin.collectAsState()
-            InputScreen(
-                draftLogin = draftLogin.value,
+            InputScreen(draftLogin = draftLogin.value,
                 onSelect = { viewModel.onSelect(draftLogin.value) },
-                onUpdateDraftLogin = {viewModel.onUpdateDraftLogin(it)},
-                onPopBackStack = {navController.popBackStack()}
-            )
+                onUpdateDraftLogin = { viewModel.onUpdateDraftLogin(it) },
+                onPopBackStack = { navController.popBackStack() })
         }
         composable(Route.REPOS.name) {
             val login = viewModel.login.collectAsState()
             val repos = viewModel.repos.collectAsState()
             val inProgress = viewModel.inProgress.collectAsState()
             val message = viewModel.message.collectAsState()
-            ReposScreen(
-                login = login.value,
+            ReposScreen(login = login.value,
                 repos = repos.value,
                 inProgress = inProgress.value,
                 message = message.value,
-                onDismiss = {viewModel.onDismiss()}
-            )
+                onDismiss = { viewModel.onDismiss() })
+        }
+        composable(Route.DIALOG_TEST.name) {
+            DialogTestScreen()
         }
     }
 }
@@ -136,10 +130,13 @@ fun HomeScreen(
     dateText: String,
     onClick: () -> Unit,
     onNavigate: () -> Unit,
+    onDialogTest: () -> Unit,
 ) {
-    Column(modifier = Modifier
-        .padding(16.dp)
-        .fillMaxWidth()) {
+    Column(
+        modifier = Modifier
+            .padding(16.dp)
+            .fillMaxWidth()
+    ) {
 
         if (isAndroid) {
             Greeting(name = "Android")
@@ -147,16 +144,23 @@ fun HomeScreen(
             Greeting(name = "iPhone")
         }
         Button(
-            onClick =  onClick
+            onClick = onClick
         ) {
             Text(text = "Push me!!")
         }
         Text(text = dateText)
-        
+
         Button(
-            onClick =  onNavigate
+            onClick = onNavigate
         ) {
             Text(text = "Navigate CommScreen")
+        }
+
+        Button(
+            onClick = onDialogTest
+        ) {
+            Text(text = "Dialog Test")
+
         }
     }
 }
@@ -171,9 +175,11 @@ fun CommScreen(
     onNavigateToInput: () -> Unit,
     onNavigateToRepos: () -> Unit,
 ) {
-    Column(modifier = Modifier
-        .padding(16.dp)
-        .fillMaxWidth()) {
+    Column(
+        modifier = Modifier
+            .padding(16.dp)
+            .fillMaxWidth()
+    ) {
         Greeting(name = "CommScreen")
 
         Row(
@@ -187,25 +193,23 @@ fun CommScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(text = login)
-            Button(
-                onClick = {
-                    onGet()
-                    onNavigateToRepos()
-                }
-            ) {
+            Button(onClick = {
+                onGet()
+                onNavigateToRepos()
+            }) {
                 Text(text = "onGet!!")
             }
         }
         Divider()
 
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)){
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(names) {
                 Row(
                     modifier = Modifier
                         .clickable { onSelect(it.login) }
                         .fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
+                ) {
                     Text(text = it.login)
                     Text(text = it.id.toString())
                     Text(text = it.updateAt.toString())
@@ -224,11 +228,12 @@ fun InputScreen(
     onPopBackStack: () -> Unit
 ) {
 
-    Column(modifier = Modifier
-        .fillMaxWidth()
-        .padding(16.dp)) {
-        TextField(
-            value = draftLogin,
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
+        TextField(value = draftLogin,
             onValueChange = {
                 if (it.length < 20) {
                     onUpdateDraftLogin(it)
@@ -239,7 +244,7 @@ fun InputScreen(
             keyboardActions = KeyboardActions(onDone = {
                 onSelect()
                 onPopBackStack()
-            } ),
+            }),
             singleLine = true
         )
     }
@@ -252,36 +257,46 @@ fun ReposScreen(
     inProgress: Boolean,
     message: String,
     onDismiss: () -> Unit,
-){
-    Column(modifier = Modifier
-        .fillMaxWidth()) {
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth()
+    ) {
         Text(
             text = "user = $login size = ${repos.size}",
             modifier = Modifier.padding(horizontal = 16.dp)
         )
         Divider()
-        LazyColumn{
+        LazyColumn {
             items(repos) {
                 Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                    Text(text = it.name, fontSize = 16.sp, modifier = Modifier.padding(horizontal = 16.dp))
-                    Text(text = it.updatedAt, fontSize = 8.sp, modifier = Modifier.padding(horizontal = 16.dp))
+                    Text(
+                        text = it.name,
+                        fontSize = 16.sp,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                    Text(
+                        text = it.updatedAt,
+                        fontSize = 8.sp,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
                 }
             }
         }
     }
     if (inProgress) {
-        Box(modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
+        ) {
             CircularProgressIndicator()
         }
     }
     if (message.isNotEmpty()) {
-        AlertDialog(
-            onDismissRequest = { onDismiss() },
+        AlertDialog(onDismissRequest = { onDismiss() },
             confirmButton = {},
             text = { Text(text = message) })
     }
 }
+
 @Composable
 fun Greeting(name: String) {
     Text(text = "Hello $name!")
@@ -291,7 +306,11 @@ fun Greeting(name: String) {
 @Composable
 fun MainPreview() {
     ComposeAppTheme {
-       HomeScreen(isAndroid = true, dateText = "2024/2/4", onClick = {}, onNavigate = {})
+        HomeScreen(isAndroid = true,
+            dateText = "2024/2/4",
+            onClick = {},
+            onNavigate = {},
+            onDialogTest = {})
     }
 }
 
@@ -299,27 +318,24 @@ fun MainPreview() {
 @Composable
 fun CommPreview() {
     ComposeAppTheme {
-        CommScreen(
-            login = "a",
+        CommScreen(login = "a",
             names = emptyList(),
             onUpdateDraftLogin = {},
             onGet = {},
             onSelect = {},
             onNavigateToRepos = {},
-            onNavigateToInput = {}
-        )
+            onNavigateToInput = {})
     }
 }
+
 @Preview(showBackground = true)
 @Composable
 fun InputPreview() {
     ComposeAppTheme {
-        InputScreen(
-            draftLogin = "test",
+        InputScreen(draftLogin = "test",
             onSelect = {},
             onUpdateDraftLogin = {},
-            onPopBackStack = {}
-        )
+            onPopBackStack = {})
     }
 }
 
@@ -327,12 +343,10 @@ fun InputPreview() {
 @Composable
 fun ReposPreview() {
     ComposeAppTheme {
-        ReposScreen(
-            login = "login",
+        ReposScreen(login = "login",
             repos = emptyList(),
             inProgress = true,
             message = "message",
-            onDismiss = {}
-        )
+            onDismiss = {})
     }
 }
